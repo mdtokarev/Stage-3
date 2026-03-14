@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public final class Run {
     // Уникальный номер запуска. Программа назначает сама.
-    private long id;
+    private final long id;
     // К какому эксперименту относится (id эксперимента).
     // Должен ссылаться на реально существующий Experiment.
     private long experimentId;
@@ -13,7 +13,7 @@ public final class Run {
     // Кто выполнял запуск (логин или имя). Нельзя пустое. До 64 символов.
     private String operatorName;
     // Когда запуск зарегистрирован. Программа ставит автоматически.
-    private Instant createdAt;
+    private final Instant createdAt;
 
     public Run(long id, long experimentId, String name, String operatorName, Instant createdAt) {
         this.id = id;

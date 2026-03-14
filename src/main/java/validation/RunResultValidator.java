@@ -4,25 +4,24 @@ import domain.RunResult;
 
 public class RunResultValidator {
     public static void validate(RunResult result) {
-        if (result.runId <= 0) {
+        if (result.getRunId() <= 0) {
             throw new ValidationException("Invalid runId");
         }
 
-        if (result.param == null) {
+        if (result.getParam() == null) {
             throw new ValidationException("Measurement param is required");
         }
 
-        if (result.unit == null) {
+        if (result.getUnit() == null) {
             throw new ValidationException("Unit cannot be empty");
         }
 
-        if (result.unit.length() > 16) {
+        if (result.getUnit().length() > 16) {
             throw new ValidationException("Unit too long");
         }
 
-        if (result.comment != null && result.comment.length() > 128) {
+        if (result.getComment() != null && result.getComment().length() > 128) {
             throw new ValidationException("Comment too long");
         }
-
     }
 }
