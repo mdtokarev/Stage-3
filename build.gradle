@@ -2,11 +2,19 @@ plugins {
     id 'java'
 }
 
+plugins {
+    id 'application'
+}
+
 group = 'ru.itmo.makson'
 version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+}
+
+application {
+    mainClass = 'cli.Main'
 }
 
 dependencies {
