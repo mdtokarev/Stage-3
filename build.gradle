@@ -1,28 +1,32 @@
 plugins {
+    id 'application'
     id 'java'
 }
 
-plugins {
-    id 'application'
-}
-
-group = 'ru.itmo.makson'
-version = '1.0-SNAPSHOT'
-
 repositories {
     mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 
 application {
     mainClass = 'cli.Main'
 }
 
-dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
 test {
     useJUnitPlatform()
+}
+
+// ===== ФИКС КОДИРОВКИ =====
+compileJava.options.encoding = 'UTF-8'
+
+run {
+    jvmArgs = [
+            '-Dfile.encoding=UTF-8',
+            '-Dconsole.encoding=UTF-8',
+            '-Dstdout.encoding=UTF-8'
+    ]
+    standardInput = System.in
 }
