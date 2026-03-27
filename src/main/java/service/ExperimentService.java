@@ -3,6 +3,7 @@ package service;
 import domain.Experiment;
 import util.IdGenerator;
 import validation.ExperimentValidator;
+import validation.ValidationException;
 
 import java.util.TreeMap;
 
@@ -27,6 +28,16 @@ public class ExperimentService {
         ExperimentValidator.validate(exp);
 
         experiments.put(id, exp);
+        return exp;
+    }
+
+    public Experiment getById(long id) {
+        Experiment exp = experiments.get(id);
+
+        if (exp == null) {
+            throw new ValidationException("Experiment not found with id - " + id);
+        }
+
         return exp;
     }
 }
