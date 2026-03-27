@@ -5,9 +5,10 @@ import domain.Experiment;
 public class ExperimentValidator {
     public static void validate(Experiment exp) {
 
-        if (exp.getName() == null) {
+        if (exp.getName() == null || exp.getName().isBlank()) {
             throw new ValidationException("Experiment name can't be empty");
         }
+//        isBlank - дает true, если строка пустая или состоит из пробелов, табуляций и тд
 
         if (exp.getName().length() >= 128) {
             throw new ValidationException("Experiment name too long");

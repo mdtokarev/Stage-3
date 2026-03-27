@@ -4,6 +4,7 @@ import domain.Experiment;
 import util.IdGenerator;
 import validation.ExperimentValidator;
 import validation.ValidationException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
@@ -54,4 +55,33 @@ public class ExperimentService {
 
         experiments.remove(id);
     }
+
+    public Experiment update(long id, String name, String description, String ownerUsername) {
+        Experiment exp = getById(id);
+
+//        Создаём временный объект
+        Experiment temp = new Experiment(
+                exp.getId(),
+                name,
+                description,
+                ownerUsername,
+                exp.getCreatedAt(),
+                Instant.now()
+        );
+//        Валидируем временный объект, и если всё ок - меняем оригинал
+        ExperimentValidator.validate(temp);
+
+        exp.setName(name);
+        exp.setDescription(description);
+        exp.setOwnerUsername(ownerUsername);
+        exp.setUpdatedAt(Instant.now());
+
+        return exp;
+    }
+    /*Если не создавать временный объект, то
+    * мы сначала меняем оригинал, и только
+    * потом валидируем его. Из-за этого
+    * ложился тест. Мы не трогаем и не
+    * меняем оригинал, пока не убедимся,
+    * что всё ок.*/
 }
