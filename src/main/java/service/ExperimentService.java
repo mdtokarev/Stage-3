@@ -2,6 +2,7 @@ package service;
 
 import domain.Experiment;
 import util.IdGenerator;
+import validation.ExperimentValidator;
 
 import java.util.TreeMap;
 
@@ -22,6 +23,8 @@ public class ExperimentService {
                 java.time.Instant.now(),
                 java.time.Instant.now()
         );
+
+        ExperimentValidator.validate(exp);
 
         experiments.put(id, exp);
         return exp;
