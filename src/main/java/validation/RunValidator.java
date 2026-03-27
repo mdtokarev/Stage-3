@@ -8,7 +8,7 @@ public class RunValidator {
             throw new ValidationException("Invalid experimentId");
         }
 
-        if (run.getName() == null) {
+        if (run.getName() == null || run.getName().isBlank()) {
             throw new ValidationException("Run name cannot be empty");
         }
 
