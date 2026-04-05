@@ -1,5 +1,8 @@
 package domain;
 
+import util.IdGenerator;
+import validation.ValidationException;
+
 import java.time.Instant;
 
 public final class Experiment {
@@ -16,54 +19,79 @@ public final class Experiment {
     // Когда изменяли. Программа обновляет автоматически.
     private Instant updatedAt;
 
-    public Experiment(long id, String name, String description, String ownerUsername, Instant createdAt, Instant updatedAt) {
-        this.id = id;
+    private final IdGenerator idGenerator = new IdGenerator();
+
+    public Experiment(String name, String description, String ownerUsername) {
+        this.id = idGenerator.generateId();
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+
+        validateName(name);
+        validateDescription(description);
+        validateOwnerUsername(ownerUsername);
+
         this.name = name;
         this.description = description;
         this.ownerUsername = ownerUsername;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+    }
+
+    static void validateName(String name) {
+        if (name == null || name.isBlank())
+            throw new ValidationException("Experiment name can't be empty");
+        if (name.length() > 128)
+            throw new ValidationException("Experiment name too long");
+    }
+
+    static void validateDescription(String description) {
+        if (description != null && description.length() > 512)
+            throw new ValidationException("Description too long");
+    }
+
+    static void validateOwnerUsername(String ownerUsername) {
+        if (ownerUsername == null || ownerUsername.isBlank())
+            throw new ValidationException("OwnerUsername can't be empty");
+        if (ownerUsername.length() > 128)
+            throw new ValidationException("OwnerUsername too long");
+    }
+
+    public void setName(String name) {
+        validateName(name);
+        this.name = name;
+        this.updatedAt = Instant.now();
+    }
+
+    public void setDescription(String description) {
+        validateDescription(description);
+        this.description = description;
+        this.updatedAt = Instant.now();
+    }
+
+    public void setOwnerUsername(String ownerUsername) {
+        validateOwnerUsername(ownerUsername);
+        this.ownerUsername = ownerUsername;
+        this.updatedAt = Instant.now();
     }
 
     public long getId() {
         return id;
     }
-
     public String getName() {
         return name;
     }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getDescription() {
         return description;
     }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
     public String getOwnerUsername() {
         return ownerUsername;
     }
-
-    public void setOwnerUsername(String ownerUsername) {
-        this.ownerUsername = ownerUsername;
-    }
-
     public Instant getCreatedAt() {
         return createdAt;
     }
-
     public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+
 }
 
 

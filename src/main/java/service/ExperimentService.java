@@ -15,19 +15,9 @@ public class ExperimentService {
     private final IdGenerator idGenerator = new IdGenerator();
 
     public Experiment add(String name, String description, String ownerUsername) {
+        long id = idGenerator.generateId();
 
-        long id = idGenerator.next();
-
-        Experiment exp = new Experiment(
-                id,
-                name,
-                description,
-                ownerUsername,
-                java.time.Instant.now(),
-                java.time.Instant.now()
-        );
-
-        ExperimentValidator.validate(exp);
+        Experiment exp = new Experiment(name, description, ownerUsername);
 
         experiments.put(id, exp);
         return exp;
@@ -57,30 +47,11 @@ public class ExperimentService {
 
     public Experiment update(long id, String name, String description, String ownerUsername) {
         Experiment exp = getById(id);
-
-//        Создаём временный объект
-        Experiment temp = new Experiment(
-                exp.getId(),
-                name,
-                description,
-                ownerUsername,
-                exp.getCreatedAt(),
-                Instant.now()
-        );
-//        Валидируем временный объект, и если всё ок - меняем оригинал
-        ExperimentValidator.validate(temp);
-
+//        валидация обновлённых параметров происходит через сеттеры
         exp.setName(name);
         exp.setDescription(description);
         exp.setOwnerUsername(ownerUsername);
-        exp.setUpdatedAt(Instant.now());
 
         return exp;
     }
-    /*Если не создавать временный объект, то
-    * мы сначала меняем оригинал, и только
-    * потом валидируем его. Из-за этого
-    * ложился тест. Мы не трогаем и не
-    * меняем оригинал, пока не убедимся,
-    * что всё ок.*/
 }
