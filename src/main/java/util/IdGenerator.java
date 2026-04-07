@@ -1,9 +1,9 @@
 package util;
 
 public class IdGenerator {
-    private long nextId = 1;
+    private static long nextId = 1;
 
-    public long generateId() {
+    public static long generateId() {
         return nextId++;
     }
 //    Создаем переменную nextId и метод, который при каждом вызове возвращает +1 от старой переменной

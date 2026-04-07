@@ -20,8 +20,7 @@ public final class Experiment {
     private Instant updatedAt;
 
     public Experiment(String name, String description, String ownerUsername) {
-        IdGenerator idGenerator = new IdGenerator();
-        this.id = idGenerator.generateId();
+        this.id = IdGenerator.generateId();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
 

@@ -23,8 +23,7 @@ public final class RunResult {
     private Instant updatedAt;
 
     public RunResult(long runId, MeasurementParam param, double value, String unit, String comment) {
-        IdGenerator idGenerator = new IdGenerator();
-        this.id = idGenerator.generateId();
+        this.id = IdGenerator.generateId();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
 

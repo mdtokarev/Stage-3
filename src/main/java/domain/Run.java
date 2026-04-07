@@ -19,8 +19,7 @@ public final class Run {
     private Instant updatedAt;
 
     public Run(long experimentId, String name, String operatorName) {
-        IdGenerator idGenerator = new IdGenerator();
-        this.id = idGenerator.generateId();
+        this.id = IdGenerator.generateId();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
 
