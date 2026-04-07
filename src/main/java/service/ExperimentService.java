@@ -10,10 +10,9 @@ import java.util.TreeMap;
 public class ExperimentService {
 
     private final TreeMap<Long, Experiment> experiments = new TreeMap<>(); // коллекция экспериментов
-    private final IdGenerator idGenerator = new IdGenerator();
 
     public Experiment add(String name, String description, String ownerUsername) {
-        long id = idGenerator.generateId();
+        long id = IdGenerator.generateId();
 
         Experiment exp = new Experiment(name, description, ownerUsername);
 
@@ -39,7 +38,6 @@ public class ExperimentService {
             throw new ValidationException("Experiment with id - " + id + " doesn't exist");
         }
 //        если эксперимента с таким номером НЕТ - кидаем исключение
-
         experiments.remove(id);
     }
 

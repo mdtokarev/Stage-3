@@ -9,10 +9,9 @@ import java.util.TreeMap;
 
 public class RunService {
     private final TreeMap<Long, Run> runs = new TreeMap<>();
-    private final IdGenerator idGenerator = new IdGenerator();
 
     public Run add(long experimentId, String name, String operatorName) {
-        long id = idGenerator.generateId();
+        long id = IdGenerator.generateId();
 
         Run run = new Run(experimentId, name, operatorName);
 

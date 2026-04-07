@@ -13,10 +13,9 @@ import java.util.TreeMap;
 public class RunResultService {
 
     private final TreeMap<Long, RunResult> results = new TreeMap<>();
-    private final IdGenerator idGenerator = new IdGenerator();
 
     public RunResult add(long runId, MeasurementParam param, double value, String unit, String comment) {
-        long id = idGenerator.generateId();
+        long id = IdGenerator.generateId();
 
         RunResult result = new RunResult(runId, param, value, unit, comment);
 
@@ -38,7 +37,6 @@ public class RunResultService {
     }
 
     public void remove(long id) {
-
         if (!results.containsKey(id)) {
             throw new ValidationException("RunResult with id " + id + " not found");
         }
