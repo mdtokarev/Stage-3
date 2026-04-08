@@ -29,7 +29,7 @@ public final class RunResult {
 
         validateRunId(runId);
         validateParam(param);
-        validateValue(value);
+        validateValueByParam(param, value);
         validateUnit(unit);
         if (comment != null) validateComment(comment);
 
@@ -50,9 +50,24 @@ public final class RunResult {
             throw new ValidationException("Measurement parameter can't be null");
     }
 
-    private static void validateValue(double value) {
-        if (value < 0)
-            throw new ValidationException("Measurement value can't be negative");
+    private static void validateValueByParam(MeasurementParam param, double value) {
+        switch (param) {
+            case pH:
+                if (value < 0)
+                    throw new ValidationException("pH can't be negative");
+                if (value > 14)
+                    throw new ValidationException("pH must be between 0 and 14");
+                break;
+            case Temperature:
+//                Может быть любая (не будем пока думать про абсолютный ноль и тд)
+                break;
+            case Concentration:
+                if (value < 0)
+                    throw new ValidationException("Concentration can't be negative");
+                break;
+            default:
+                throw new ValidationException("Unknown measurement parameter - " + param);
+        }
     }
 
     private static void validateUnit(String unit) {
@@ -72,7 +87,9 @@ public final class RunResult {
     }
 
     public void setValue(double value) {
-        validateValue(value);
+//        Берём текущий параметр и валидируем устанавливаемое для него значение
+//        Т.е валидация происходит в зависимости от параметра
+        validateValueByParam(this.param, value);
         this.value = value;
         this.updatedAt = Instant.now();
     }

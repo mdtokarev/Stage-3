@@ -50,7 +50,7 @@ class ExperimentTest {
     }
 
     @Test
-//    Проверяем валидацию длинного имени владельца 
+//    Проверяем валидацию длинного имени владельца
     void shouldThrowWhenOwnerUsernameTooLong() {
         assertThrows(ValidationException.class, () -> {
             new Experiment("name", "desc", "a".repeat(129));
