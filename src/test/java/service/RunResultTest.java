@@ -99,4 +99,22 @@ class RunResultTest {
         assertThrows(ValidationException.class, () ->
                 new RunResult(1, MeasurementParam.Concentration, -1.0, "mg/L", "comment"));
     }
+
+    @Test
+//    Проверяем валидацию установки отрицательного рН через сеттер
+    void shouldThrowWhenSetNegativePh() {
+        var result = new RunResult(1, MeasurementParam.pH, 7.0, "pH", "comm");
+        assertThrows(ValidationException.class, () -> {
+           result.setValue(-1);
+        });
+    }
+
+    @Test
+//    Проверяем валидацию установки отрицательной концентрации через сеттер
+    void shouldThrowWhenSetNegativeConcentration() {
+        var result = new RunResult(1, MeasurementParam.Concentration, 50, "g/L", "comm");
+        assertThrows(ValidationException.class, () -> {
+           result.setValue(-10);
+        });
+    }
 }
