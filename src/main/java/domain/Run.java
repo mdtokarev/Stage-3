@@ -1,35 +1,53 @@
 package domain;
 
-import util.IdGenerator;
 import validation.ValidationException;
+
 import java.time.Instant;
 
 public final class Run {
-    // Уникальный номер запуска. Программа назначает сама.
     private final long id;
-    // К какому эксперименту относится (id эксперимента).
-    // Должен ссылаться на реально существующий Experiment.
-    private long experimentId;
-    // Название запуска reminder: “Run-2026-02-03-A”. Нельзя пустое. До 128 символов.
+    private final long experimentId;
     private String name;
-    // Кто выполнял запуск (логин или имя). Нельзя пустое. До 64 символов.
     private String operatorName;
-    // Когда запуск зарегистрирован. Программа ставит автоматически.
     private final Instant createdAt;
     private Instant updatedAt;
 
-    public Run(long experimentId, String name, String operatorName) {
-        this.id = IdGenerator.generateId();
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+    public Run(long id, long experimentId, String name, String operatorName) {
+        this(id, experimentId, name, operatorName, Instant.now(), Instant.now());
+    }
 
+    private Run(long id,
+                long experimentId,
+                String name,
+                String operatorName,
+                Instant createdAt,
+                Instant updatedAt) {
+        validateId(id);
         validateExperimentId(experimentId);
         validateName(name);
         validateOperatorName(operatorName);
+        validateTimestamps(createdAt, updatedAt);
 
+        this.id = id;
         this.experimentId = experimentId;
         this.name = name;
         this.operatorName = operatorName;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static Run restore(long id,
+                              long experimentId,
+                              String name,
+                              String operatorName,
+                              Instant createdAt,
+                              Instant updatedAt) {
+        return new Run(id, experimentId, name, operatorName, createdAt, updatedAt);
+    }
+
+    private static void validateId(long id) {
+        if (id <= 0)
+            throw new ValidationException("Run id must be positive");
     }
 
     private static void validateExperimentId(long experimentId) {
@@ -51,6 +69,18 @@ public final class Run {
             throw new ValidationException("Operator name too long");
     }
 
+    private static void validateTimestamps(Instant createdAt, Instant updatedAt) {
+        if (createdAt == null) {
+            throw new ValidationException("Run createdAt can't be null");
+        }
+        if (updatedAt == null) {
+            throw new ValidationException("Run updatedAt can't be null");
+        }
+        if (updatedAt.isBefore(createdAt)) {
+            throw new ValidationException("Run updatedAt can't be before createdAt");
+        }
+    }
+
     public void setName(String name) {
         validateName(name);
         this.name = name;
@@ -63,20 +93,36 @@ public final class Run {
         this.updatedAt = Instant.now();
     }
 
+    public void update(String name, String operatorName) {
+        validateName(name);
+        validateOperatorName(operatorName);
+
+        this.name = name;
+        this.operatorName = operatorName;
+        this.updatedAt = Instant.now();
+    }
+
     public long getId() {
         return id;
     }
+
     public String getName() {
         return name;
     }
+
     public long getExperimentId() {
         return experimentId;
     }
+
     public String getOperatorName() {
         return operatorName;
     }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
-}
 
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+}
