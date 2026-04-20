@@ -19,6 +19,8 @@
 - `src/main/java/util`
 - `src/main/java/validation`
 - `src/main/java/cli`
+- `src/main/java/storage`
+- `src/main/java/ui`
 - `src/test/java/domain`
 - `src/test/java/service`
 - `src/test/java/cli`
@@ -53,6 +55,14 @@
 - `save/load` работают через схему `services -> DTO -> JSON` и `JSON -> DTO -> validate -> restore -> temp services -> replace`
 - Добавлены тесты stage 3: validator, mapper/restore, integration round-trip, `nextId` после `load`, защита от битого файла, CLI `save/load`
 - `./gradlew test` проходит успешно после реализации stage 3
+- `exp_summary` вынесен в отдельный `ExperimentSummaryService`, чтобы CLI и UI использовали одну и ту же логику
+- Для stage 4 добавлены `ui.UiMain`, `ui.UiLauncher`, `ui.controller.MainController`, `ui.view.MainView`, `ui.dialog`, `ui.mapper`, `ui.viewmodel`
+- JavaFX UI запускается отдельной Gradle-задачей `runUi`, не ломая существующий CLI entry point
+- Реализован master-detail UI с тремя таблицами `Experiment -> Run -> RunResult`, панелью деталей, фильтром по `MeasurementParam` и кнопками `Save/Load/Refresh`
+- Через UI можно создавать и редактировать `Experiment`, `Run`, `RunResult`
+- UI показывает summary эксперимента через сервисный слой и использует `DataManager` для `save/load`
+- `README.md` обновлен под запуск CLI и JavaFX UI
+- `./gradlew test` проходит успешно после реализации stage 4
 
 ## Правило по этапу 2
 - Дальше идти по списку команд из `Методика.pdf`, а не придумывать свой порядок
@@ -60,7 +70,7 @@
 - При защите нужно явно проговорить, что архитектура разделена на `domain`, `service`, `validation`, `cli`
 
 ## Что еще осталось
-- Обновить/дописать `README.md` с инструкцией запуска
+- При желании довести UI-полировку: форматирование дат, более богатые пустые состояния, delete-сценарии после отдельного сервисного контракта
 - При желании привести названия CLI-команд ближе к формулировкам из методички
 - Поддерживать заметки и защитные материалы в актуальном состоянии
 

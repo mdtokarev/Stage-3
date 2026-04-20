@@ -12,6 +12,359 @@
 
 ## 2026-04-20
 
+### Реализован stage 4: JavaFX UI поверх существующих `service/storage` слоев
+
+<div style="padding:12px; border-left:6px solid #2f855a; background:#f0fff4;">
+<b>Суть изменения</b><br>
+Этап 4 реализован как отдельный JavaFX-слой поверх уже готовых этапов 1-3. В проект добавлены отдельный UI entry point, главное окно с тремя связанными таблицами <code>Experiment -> Run -> RunResult</code>, формы создания и редактирования, вызов <code>save/load</code> через <code>DataManager</code>, показ summary через сервисный слой и обновленная документация по запуску UI.
+</div>
+
+**Файл или файлы**
+- `C:\Users\maksi\.codex\Laba1\build.gradle`
+- `C:\Users\maksi\.codex\Laba1\Stage-4.md`
+- `C:\Users\maksi\.codex\Laba1\README.md`
+- `C:\Users\maksi\.codex\Laba1\AGENTS.md`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\service\ExperimentSummary.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\service\SummaryStats.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\service\ExperimentSummaryService.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\cli\CliRunner.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\UiLauncher.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\UiMain.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\controller\MainController.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\view\MainView.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\dialog\AlertDialogs.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\dialog\EntityDialogs.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\mapper\UiModelMapper.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\viewmodel\ExperimentRow.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\viewmodel\RunRow.java`
+- `C:\Users\maksi\.codex\Laba1\src\main\java\ui\viewmodel\RunResultRow.java`
+- `C:\Users\maksi\.codex\Laba1\src\test\java\service\ExperimentSummaryServiceTest.java`
+
+**Почему сделано именно так**
+- JavaFX вынесен в отдельный внешний слой `ui`, а существующие `domain/service/storage/cli` не зависят от него.
+- Вместо FXML и набора экранов выбран программный UI с одним главным master-detail окном: так проще контролировать архитектуру и быстрее получить рабочий результат.
+- Вариант с "таблицами" реализован через три `TableView`, потому что это естественно отражает предметную область:
+  - один `Experiment` -> много `Run`
+  - один `Run` -> много `RunResult`
+- Логику summary я вынес из CLI в `ExperimentSummaryService`, чтобы JavaFX не дублировал расчеты `count/min/max/avg`.
+- `save/load` в UI не общаются напрямую с JSON-DTO, а идут через уже готовый `DataManager`, как и было зафиксировано в плане этапа 4.
+- Для таблиц добавлены простые `viewmodel`-классы и `UiModelMapper`, чтобы UI-слой не разрастался форматированием дат, текста деталей и summary.
+- Формы создания и редактирования сделаны через JavaFX `Dialog`, а ошибки показываются через отдельный `AlertDialogs`, чтобы контроллер не превращался в смесь layout-кода и alert-логики.
+- CLI сохранен как отдельный entry point, а UI запускается через `runUi`, что соответствует требованию не ломать этапы 1-3.
+
+**Финальный код**
+
+#### 1. JavaFX подключен отдельной Gradle-задачей
+
+```groovy
+def javafxVersion = '21.0.2'
+def javafxPlatform = {
+    def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+    if (osName.contains('win')) {
+        return 'win'
+    }
+    if (osName.contains('mac')) {
+        return 'mac'
+    }
+    if (osName.contains('linux')) {
+        return 'linux'
+    }
+    throw new GradleException("Unsupported OS for JavaFX: ${System.getProperty('os.name')}")
+}.call()
+
+dependencies {
+    implementation "org.openjfx:javafx-base:${javafxVersion}:${javafxPlatform}"
+    implementation "org.openjfx:javafx-graphics:${javafxVersion}:${javafxPlatform}"
+    implementation "org.openjfx:javafx-controls:${javafxVersion}:${javafxPlatform}"
+}
+
+tasks.register('runUi', JavaExec) {
+    group = 'application'
+    description = 'Runs the JavaFX UI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ui.UiLauncher'
+}
+```
+
+Это позволяет:
+- не ломать существующий `run` для CLI;
+- запускать UI отдельно через `.\gradlew.bat runUi`;
+- держать JavaFX как отдельный runtime-слой проекта.
+
+#### 2. Summary вынесен из CLI в сервисный слой
+
+```java
+public class ExperimentSummaryService {
+    private final ExperimentService experimentService;
+    private final RunService runService;
+    private final RunResultService runResultService;
+
+    public ExperimentSummary summarize(long experimentId) {
+        Experiment experiment = experimentService.getById(experimentId);
+        Map<MeasurementParam, SummaryStats> statsByParam = new EnumMap<>(MeasurementParam.class);
+
+        for (Run run : runService.listByExperimentId(experimentId)) {
+            for (RunResult result : runResultService.listByRunId(run.getId())) {
+                statsByParam.compute(result.getParam(), (param, existingStats) ->
+                        existingStats == null
+                                ? createInitialStats(result.getValue())
+                                : mergeStats(existingStats, result.getValue()));
+            }
+        }
+
+        return new ExperimentSummary(experiment.getId(), experiment.getName(), Map.copyOf(statsByParam));
+    }
+}
+```
+
+```java
+public record SummaryStats(int count, double min, double max, double avg) {
+}
+```
+
+Здесь важно:
+- summary больше не живет только внутри `CliRunner`;
+- CLI и UI используют один и тот же контракт;
+- UI не считает агрегаты сам, а только показывает результат.
+
+#### 3. JavaFX entry point добавлен отдельно от CLI
+
+```java
+public final class UiLauncher {
+    public static void main(String[] args) {
+        Application.launch(UiMain.class, args);
+    }
+}
+```
+
+```java
+public class UiMain extends Application {
+    @Override
+    public void start(Stage stage) {
+        ExperimentService experimentService = new ExperimentService();
+        RunService runService = new RunService(experimentService);
+        RunResultService runResultService = new RunResultService(runService);
+        DataManager dataManager = new DataManager(experimentService, runService, runResultService);
+        ExperimentSummaryService experimentSummaryService =
+                new ExperimentSummaryService(experimentService, runService, runResultService);
+
+        MainController controller = new MainController(
+                stage,
+                experimentService,
+                runService,
+                runResultService,
+                dataManager,
+                experimentSummaryService
+        );
+
+        Scene scene = new Scene(controller.createContent(), 1540, 860);
+        stage.setScene(scene);
+        stage.show();
+    }
+}
+```
+
+Такой вход сохраняет чистое разделение:
+- `cli.Main` остается консольным entry point;
+- `ui.UiLauncher` и `ui.UiMain` отвечают только за JavaFX.
+
+#### 4. Главное окно собрано как master-detail из трех `TableView`
+
+```java
+private final TableView<ExperimentRow> experimentTable = new TableView<>(experimentItems);
+private final TableView<RunRow> runTable = new TableView<>(runItems);
+private final TableView<RunResultRow> runResultTable = new TableView<>(runResultItems);
+private final ComboBox<String> resultFilterComboBox = new ComboBox<>();
+private final TextArea detailsArea = new TextArea();
+```
+
+```java
+HBox center = new HBox(12, experimentPane, runPane, resultPane);
+root.setTop(top);
+root.setCenter(center);
+root.setBottom(bottom);
+```
+
+Я выбрал именно такой layout, потому что он сразу показывает связи предметной области:
+- слева `Experiment`;
+- по центру `Run` выбранного эксперимента;
+- справа `RunResult` выбранного прогона;
+- внизу детали выбранной сущности.
+
+#### 5. Связь между таблицами централизована в `MainController`
+
+```java
+private void configureSelectionListeners() {
+    view.experimentTable().getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        if (!updatingSelection) {
+            refreshHierarchy(newValue != null ? newValue.id() : null, null, null);
+        }
+    });
+
+    view.runTable().getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        if (!updatingSelection) {
+            refreshHierarchy(selectedExperimentId(), newValue != null ? newValue.id() : null, null);
+        }
+    });
+}
+```
+
+```java
+private void refreshHierarchy(Long experimentIdToSelect, Long runIdToSelect, Long runResultIdToSelect) {
+    updatingSelection = true;
+    try {
+        List<ExperimentRow> experimentRows = experimentService.list().stream()
+                .map(uiModelMapper::toExperimentRow)
+                .toList();
+        view.experimentItems().setAll(experimentRows);
+
+        ExperimentRow selectedExperimentRow = selectRow(view.experimentTable(), experimentIdToSelect);
+        if (selectedExperimentRow == null) {
+            view.runItems().clear();
+            view.runResultItems().clear();
+            return;
+        }
+
+        List<RunRow> runRows = runService.listByExperimentId(selectedExperimentRow.id()).stream()
+                .map(uiModelMapper::toRunRow)
+                .toList();
+        view.runItems().setAll(runRows);
+        // ...
+    } finally {
+        updatingSelection = false;
+    }
+
+    updateDetailsArea();
+}
+```
+
+Это самый важный кусок UI-логики stage 4:
+- пользователь выбирает строку в одной таблице;
+- контроллер сам обновляет зависимые таблицы;
+- старые selection корректно сбрасываются;
+- после `load` и `refresh` UI перерисовывается целиком через один сценарий.
+
+#### 6. Формы создания и редактирования вынесены в `ui.dialog`
+
+```java
+public static Optional<ExperimentFormData> showExperimentDialog(Window owner, Experiment initialValue) {
+    Dialog<ExperimentFormData> dialog = createDialog(
+            owner,
+            initialValue == null ? "New Experiment" : "Edit Experiment",
+            initialValue == null ? "Create experiment" : "Update experiment"
+    );
+
+    TextField nameField = new TextField(initialValue != null ? initialValue.getName() : "");
+    TextArea descriptionArea = new TextArea(initialValue != null && initialValue.getDescription() != null
+            ? initialValue.getDescription() : "");
+    TextField ownerField = new TextField(initialValue != null ? initialValue.getOwnerUsername() : "");
+
+    Node saveButton = dialog.getDialogPane().lookupButton(getPrimaryActionButton(dialog));
+    saveButton.addEventFilter(ActionEvent.ACTION, event -> {
+        if (nameField.getText().trim().isEmpty()) {
+            AlertDialogs.showError(owner, "Validation error", "Experiment name is required", "Enter experiment name.");
+            event.consume();
+        }
+    });
+    // ...
+}
+```
+
+```java
+public static Optional<RunResultFormData> showRunResultDialog(Window owner, RunResult initialValue) {
+    ComboBox<MeasurementParam> paramComboBox = new ComboBox<>();
+    paramComboBox.getItems().addAll(MeasurementParam.values());
+
+    TextField valueField = new TextField(initialValue != null ? Double.toString(initialValue.getValue()) : "");
+    TextField unitField = new TextField(initialValue != null ? initialValue.getUnit() : "");
+    TextArea commentArea = new TextArea(initialValue != null && initialValue.getComment() != null
+            ? initialValue.getComment() : "");
+    // ...
+}
+```
+
+Почему это важно:
+- контроллер не разрастается формами и layout-кодом;
+- формы можно переиспользовать и для create, и для edit;
+- локальная валидация UI ограничивается только проверкой, что поле не пустое или число парсится, а основная бизнес-валидация всё равно остается в сервисах и домене.
+
+#### 7. UI использует `DataManager` и сервисы, а не лезет в JSON напрямую
+
+```java
+private void save() {
+    FileChooser fileChooser = createJsonFileChooser("Save data to JSON");
+    var file = fileChooser.showSaveDialog(stage);
+    if (file == null) {
+        return;
+    }
+
+    dataManager.saveToFile(file.getAbsolutePath());
+    setStatus("Data saved to " + file.getAbsolutePath());
+}
+```
+
+```java
+private void load() {
+    FileChooser fileChooser = createJsonFileChooser("Load data from JSON");
+    var file = fileChooser.showOpenDialog(stage);
+    if (file == null) {
+        return;
+    }
+
+    dataManager.loadFromFile(file.getAbsolutePath());
+    view.resultFilterComboBox().getSelectionModel().select(FILTER_ALL);
+    refreshHierarchy(null, null, null);
+    setStatus("Data loaded from " + file.getAbsolutePath());
+}
+```
+
+Это соответствует главному правилу stage 4:
+- UI не знает ничего о DTO и `JsonFileStorage`;
+- UI вызывает готовый сценарий `save/load`;
+- после `load` интерфейс полностью пересобирает отображение данных.
+
+#### 8. README и Stage-4.md обновлены под реальную реализацию
+
+```md
+## Запуск JavaFX UI
+
+.\gradlew.bat runUi
+```
+
+```md
+Stage-4.md уточнен:
+- таблицы = `TableView`
+- зафиксирован master-detail сценарий
+- добавлены минимальные колонки таблиц
+- усилено требование вынести summary в сервис
+- уточнено поведение selection после create/load/delete
+```
+
+#### 9. Тесты дополнены под новый сервисный контракт summary
+
+```java
+@Test
+void shouldBuildSummaryForExperiment() {
+    var summaryService = new ExperimentSummaryService(experimentService, runService, runResultService);
+    // ...
+
+    ExperimentSummary summary = summaryService.summarize(experiment.getId());
+
+    SummaryStats phStats = summary.statsByParam().get(MeasurementParam.pH);
+    assertEquals(2, phStats.count());
+    assertEquals(7.5, phStats.avg());
+}
+```
+
+Это не UI-тест в прямом смысле, но он фиксирует один из самых важных контрактов, на которые теперь опирается JavaFX.
+
+```bash
+./gradlew test
+# BUILD SUCCESSFUL
+```
+
+---
+
 ### Закрыт риск stage 3 с `null`-элементами внутри JSON-массивов
 
 <div style="padding:12px; border-left:6px solid #2f855a; background:#f0fff4;">
