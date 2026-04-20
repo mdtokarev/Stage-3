@@ -1,7 +1,24 @@
+import java.util.Locale
+
 plugins {
     id 'application'
     id 'java'
 }
+
+def javafxVersion = '21.0.2'
+def javafxPlatform = {
+    def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+    if (osName.contains('win')) {
+        return 'win'
+    }
+    if (osName.contains('mac')) {
+        return 'mac'
+    }
+    if (osName.contains('linux')) {
+        return 'linux'
+    }
+    throw new GradleException("Unsupported OS for JavaFX: ${System.getProperty('os.name')}")
+}.call()
 
 repositories {
     mavenCentral()
@@ -9,6 +26,9 @@ repositories {
 
 dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation "org.openjfx:javafx-base:${javafxVersion}:${javafxPlatform}"
+    implementation "org.openjfx:javafx-graphics:${javafxVersion}:${javafxPlatform}"
+    implementation "org.openjfx:javafx-controls:${javafxVersion}:${javafxPlatform}"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 
@@ -34,4 +54,16 @@ run {
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+}
+
+tasks.register('runUi', JavaExec) {
+    group = 'application'
+    description = 'Runs the JavaFX UI'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'ui.UiLauncher'
+    jvmArgs = [
+            '-Dfile.encoding=UTF-8',
+            '-Dconsole.encoding=UTF-8',
+            '-Dstdout.encoding=UTF-8'
+    ]
 }

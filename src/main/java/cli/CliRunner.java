@@ -5,19 +5,19 @@ import domain.MeasurementParam;
 import domain.Run;
 import domain.RunResult;
 import service.DataManager;
+import service.ExperimentSummary;
+import service.ExperimentSummaryService;
 import service.ExperimentService;
 import service.RunResultService;
 import service.RunService;
+import service.SummaryStats;
 import validation.ValidationException;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Scanner;
 
 public class CliRunner {
@@ -28,6 +28,7 @@ public class CliRunner {
     private final RunService runService;
     private final RunResultService runResultService;
     private final DataManager dataManager;
+    private final ExperimentSummaryService experimentSummaryService;
     private boolean running;
 
     public CliRunner() {
@@ -49,6 +50,7 @@ public class CliRunner {
         this.runService = runService != null ? runService : new RunService(experimentService);
         this.runResultService = runResultService != null ? runResultService : new RunResultService(this.runService);
         this.dataManager = new DataManager(this.experimentService, this.runService, this.runResultService);
+        this.experimentSummaryService = new ExperimentSummaryService(this.experimentService, this.runService, this.runResultService);
     }
 
     public static void run() {
@@ -210,28 +212,18 @@ public class CliRunner {
 
     private void handleExperimentSummary(ParsedCommand parsedCommand) {
         long experimentId = parseRequiredLongArgument(parsedCommand, "exp_summary", "experiment id");
-        Experiment experiment = experimentService.getById(experimentId);
-        var runs = runService.listByExperimentId(experimentId);
+        ExperimentSummary summary = experimentSummaryService.summarize(experimentId);
 
-        Map<MeasurementParam, List<Double>> valuesByParam = new EnumMap<>(MeasurementParam.class);
-        for (Run run : runs) {
-            for (RunResult result : runResultService.listByRunId(run.getId())) {
-                valuesByParam
-                        .computeIfAbsent(result.getParam(), key -> new ArrayList<>())
-                        .add(result.getValue());
-            }
-        }
-
-        if (valuesByParam.isEmpty()) {
-            out.println("No summary data for experiment " + experiment.getId() + ".");
+        if (summary.isEmpty()) {
+            out.println("No summary data for experiment " + summary.experimentId() + ".");
             return;
         }
 
-        out.println("Summary for experiment " + experiment.getId() + " (" + experiment.getName() + "):");
+        out.println("Summary for experiment " + summary.experimentId() + " (" + summary.experimentName() + "):");
         for (MeasurementParam param : MeasurementParam.values()) {
-            List<Double> values = valuesByParam.get(param);
-            if (values != null && !values.isEmpty()) {
-                out.println(formatSummaryLine(param, values));
+            SummaryStats stats = summary.statsByParam().get(param);
+            if (stats != null) {
+                out.println(formatSummaryLine(param, stats));
             }
         }
     }
@@ -495,28 +487,12 @@ public class CliRunner {
                 + " | comment=" + formatNullableValue(result.getComment());
     }
 
-    private String formatSummaryLine(MeasurementParam param, List<Double> values) {
-        int count = values.size();
-        double min = values.get(0);
-        double max = values.get(0);
-        double sum = 0.0;
-
-        for (double value : values) {
-            if (value < min) {
-                min = value;
-            }
-            if (value > max) {
-                max = value;
-            }
-            sum += value;
-        }
-
-        double avg = sum / count;
+    private String formatSummaryLine(MeasurementParam param, SummaryStats stats) {
         return param
-                + ": count=" + count
-                + " min=" + formatDecimal(min)
-                + " max=" + formatDecimal(max)
-                + " avg=" + formatDecimal(avg);
+                + ": count=" + stats.count()
+                + " min=" + formatDecimal(stats.min())
+                + " max=" + formatDecimal(stats.max())
+                + " avg=" + formatDecimal(stats.avg());
     }
 
     private String formatDecimal(double value) {
